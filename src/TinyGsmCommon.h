@@ -116,27 +116,6 @@ uint32_t TinyGsmAutoBaud(T& SerialAT, uint32_t minimum = 9600, uint32_t maximum 
   return 0;
 }
 
-static inline
-IPAddress TinyGsmIpFromString(const String& strIP) {
-  int Parts[4] = {0, };
-  int Part = 0;
-  for (uint8_t i=0; i<strIP.length(); i++) {
-    char c = strIP[i];
-    if (c == '.') {
-      Part++;
-      if (Part > 3) {
-        return IPAddress(0,0,0,0);
-      }
-      continue;
-    } else if (c >= '0' && c <= '9') {
-      Parts[Part] *= 10;
-      Parts[Part] += c - '0';
-    } else {
-      if (Part == 3) break;
-    }
-  }
-  return IPAddress(Parts[0], Parts[1], Parts[2], Parts[3]);
-}
 
 static inline
 String TinyGsmDecodeHex7bit(String &instr) {
@@ -224,22 +203,11 @@ public:
   virtual bool begin(const char* pin = NULL) {
     return init(pin);
   }
-  // Returns a string with the chip name
-  virtual String getModemName() = 0;
-  // Sets the serial communication baud rate
-  virtual void setBaud(unsigned long baud) = 0;
+
   // Checks that the modem is responding to standard AT commands
   virtual bool testAT(unsigned long timeout = 10000L) = 0;
   // Holds open communication with the modem waiting for data to come in
   virtual void maintain() = 0;
-  // Resets all modem chip settings to factor defaults
-  virtual bool factoryDefault() = 0;
-  // Returns the response to a get info request.  The format varies by modem.
-  virtual String getModemInfo() = 0;
-  // Answers whether types of communication are available on this modem
-  virtual bool hasSSL() = 0;
-  virtual bool hasWifi() = 0;
-  virtual bool hasGPRS() = 0;
 
   /*
    * Power functions
@@ -247,15 +215,6 @@ public:
 
   virtual bool restart() = 0;
   virtual bool poweroff() = 0;
-
-  /*
-   * SIM card functions - only apply to cellular modems
-   */
-
-  virtual bool simUnlock(const char *pin) { return false; }
-  virtual String getSimCCID() { return ""; }
-  virtual String getIMEI() { return ""; }
-  virtual String getOperator() { return ""; }
 
  /*
   * Generic network functions
@@ -291,15 +250,6 @@ public:
   }
   virtual bool gprsDisconnect() { return false; }
   virtual bool isGprsConnected() { return false; }
-
-  /*
-   * IP Address functions
-   */
-
-  virtual String getLocalIP() = 0;
-  virtual IPAddress localIP() {
-    return TinyGsmIpFromString(getLocalIP());
-  }
 
     /*
      Utilities

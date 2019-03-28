@@ -251,26 +251,7 @@ public:
     if (waitResponse() != 1) {
       return false;
     }
-    DBG(GF("### Modem:"), getModemName());
-    getSimStatus();
     return true;
-  }
-
-  String getModemName() {
-    #if defined(TINY_GSM_MODEM_SIM800)
-      return "SIMCom SIM800";
-    #elif defined(TINY_GSM_MODEM_SIM808)
-      return "SIMCom SIM808";
-    #elif defined(TINY_GSM_MODEM_SIM868)
-      return "SIMCom SIM868";
-    #elif defined(TINY_GSM_MODEM_SIM900)
-      return "SIMCom SIM900";
-    #endif
-    return "SIMCom SIM800";
-  }
-
-  void setBaud(unsigned long baud) {
-    sendAT(GF("+IPR="), baud);
   }
 
   bool testAT(unsigned long timeout = 10000L) {
@@ -294,53 +275,6 @@ public:
     while (stream.available()) {
       waitResponse(10, NULL, NULL);
     }
-  }
-
-  bool factoryDefault() {
-    sendAT(GF("&FZE0&W"));  // Factory + Reset + Echo Off + Write
-    waitResponse();
-    sendAT(GF("+IPR=0"));   // Auto-baud
-    waitResponse();
-    sendAT(GF("+IFC=0,0")); // No Flow Control
-    waitResponse();
-    sendAT(GF("+ICF=3,3")); // 8 data 0 parity 1 stop
-    waitResponse();
-    sendAT(GF("+CSCLK=0")); // Disable Slow Clock
-    waitResponse();
-    sendAT(GF("&W"));       // Write configuration
-    return waitResponse() == 1;
-  }
-
-  String getModemInfo() {
-    sendAT(GF("I"));
-    String res;
-    if (waitResponse(1000L, res) != 1) {
-      return "";
-    }
-    res.replace(GSM_NL "OK" GSM_NL, "");
-    res.replace(GSM_NL, " ");
-    res.trim();
-    return res;
-  }
-
-  bool hasSSL() {
-#if defined(TINY_GSM_MODEM_SIM900)
-    return false;
-#else
-    sendAT(GF("+CIPSSL=?"));
-    if (waitResponse(GF(GSM_NL "+CIPSSL:")) != 1) {
-      return false;
-    }
-    return waitResponse() == 1;
-#endif
-  }
-
-  bool hasWifi() {
-    return false;
-  }
-
-  bool hasGPRS() {
-    return true;
   }
 
   /*
@@ -399,52 +333,6 @@ public:
    * SIM card functions
    */
 
-  bool simUnlock(const char *pin) {
-    sendAT(GF("+CPIN=\""), pin, GF("\""));
-    return waitResponse() == 1;
-  }
-
-  String getSimCCID() {
-    sendAT(GF("+ICCID"));
-    if (waitResponse(GF(GSM_NL "+ICCID:")) != 1) {
-      return "";
-    }
-    String res = stream.readStringUntil('\n');
-    waitResponse();
-    res.trim();
-    return res;
-  }
-
-  String getIMEI() {
-    sendAT(GF("+GSN"));
-    if (waitResponse(GF(GSM_NL)) != 1) {
-      return "";
-    }
-    String res = stream.readStringUntil('\n');
-    waitResponse();
-    res.trim();
-    return res;
-  }
-
-  SimStatus getSimStatus(unsigned long timeout = 10000L) {
-    for (unsigned long start = millis(); millis() - start < timeout; ) {
-      sendAT(GF("+CPIN?"));
-      if (waitResponse(GF(GSM_NL "+CPIN:")) != 1) {
-        delay(1000);
-        continue;
-      }
-      int status = waitResponse(GF("READY"), GF("SIM PIN"), GF("SIM PUK"), GF("NOT INSERTED"));
-      waitResponse();
-      switch (status) {
-        case 2:
-        case 3:  return SIM_LOCKED;
-        case 1:  return SIM_READY;
-        default: return SIM_ERROR;
-      }
-    }
-    return SIM_ERROR;
-  }
-
   RegStatus getRegistrationStatus() {
     sendAT(GF("+CREG?"));
     if (waitResponse(GF(GSM_NL "+CREG:")) != 1) {
@@ -454,17 +342,6 @@ public:
     int status = stream.readStringUntil('\n').toInt();
     waitResponse();
     return (RegStatus)status;
-  }
-
-  String getOperator() {
-    sendAT(GF("+COPS?"));
-    if (waitResponse(GF(GSM_NL "+COPS:")) != 1) {
-      return "";
-    }
-    streamSkipUntil('"'); // Skip mode and format
-    String res = stream.readStringUntil('"');
-    waitResponse();
-    return res;
   }
 
   /*
@@ -605,23 +482,6 @@ public:
 
     return true;
   }
-
-  /*
-   * IP Address functions
-   */
-
-  String getLocalIP() {
-    sendAT(GF("+CIFSR;E0"));
-    String res;
-    if (waitResponse(10000L, res) != 1) {
-      return "";
-    }
-    res.replace(GSM_NL "OK" GSM_NL, "");
-    res.replace(GSM_NL, "");
-    res.trim();
-    return res;
-  }
-
 
   /*
    * Phone Call functions
